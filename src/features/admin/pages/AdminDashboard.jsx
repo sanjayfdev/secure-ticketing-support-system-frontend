@@ -33,8 +33,9 @@ import {
   PeopleRounded,
   CloseRounded,
 } from "@mui/icons-material";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "../../../layouts/DashboardLayout";
+import { getAllTicketsApi } from "../../tickets/api/ticketApi";
 
 const stats = [
   {
@@ -151,8 +152,21 @@ const AdminDashboardPage = () => {
     setEditTicket(null);
   };
 
+const fetchAllTickets = async () => {
+    try {
+      const data = await getAllTicketsApi();
+      setTickets(data.tickets);
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+    }
+  };
+
+//   useEffect(()=>{
+// fetchAllTickets();
+//   },[])
+
   return (
-    <DashboardLayout>
+    <>
       {/* Page title */}
       <Box mb={3.5}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 0.5 }}>
@@ -607,7 +621,7 @@ const AdminDashboardPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 };
 

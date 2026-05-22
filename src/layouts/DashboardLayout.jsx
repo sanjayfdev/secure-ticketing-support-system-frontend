@@ -1,36 +1,93 @@
-import { Box } from "@mui/material";
+import {
+  Box,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+
+import { Outlet } from "react-router-dom";
+
+import { useState } from "react";
+
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 
-const DashboardLayout = ({ children }) => {
+const SIDEBAR_WIDTH = 260;
+const NAVBAR_HEIGHT = 72;
+
+const DashboardLayout = () => {
+  const theme = useTheme();
+
+  const isMobile = useMediaQuery(
+    theme.breakpoints.down("md")
+  );
+
+  const [mobileOpen, setMobileOpen] =
+    useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen((prev) => !prev);
+  };
+
   return (
     <Box
       sx={{
-        display: "flex",
         minHeight: "100vh",
         bgcolor: "#F8F9FC",
       }}
     >
-      <Sidebar />
+      {/* SIDEBAR */}
+
+      <Sidebar
+        mobileOpen={mobileOpen}
+        onClose={handleDrawerToggle}
+      />
+
+      {/* MAIN CONTENT */}
 
       <Box
         sx={{
-          flex: 1,
-          ml: { md: "260px" },
+          ml: {
+            md: `${SIDEBAR_WIDTH}px`,
+          },
+
+          minHeight: "100vh",
+
           display: "flex",
+
           flexDirection: "column",
         }}
       >
-        <Navbar />
+        {/* NAVBAR */}
+
+        <Navbar
+          onMenuClick={
+            handleDrawerToggle
+          }
+        />
+
+        {/* PAGE CONTENT */}
 
         <Box
+          component="main"
           sx={{
-            mt: "64px",
-            p: { xs: 2, md: 3.5 },
             flex: 1,
+
+            pt: `${NAVBAR_HEIGHT}px`,
+
+            px: {
+              xs: 2,
+              sm: 3,
+              md: 4,
+            },
+
+            pb: 4,
+
+            width: "100%",
+
+            overflowX: "hidden",
           }}
         >
-          {children}
+          <Outlet />
         </Box>
       </Box>
     </Box>

@@ -24,6 +24,8 @@ import {
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import DashboardLayout from "../../../layouts/DashboardLayout";
+import { useEffect, useState } from "react";
+import { getMyTicketsApi } from "../api/ticketApi";
 
 const stats = [
   {
@@ -97,7 +99,6 @@ const tickets = [
     date: "May 20, 2025",
   },
 ];
-
 const statusConfig = {
   Open: { color: "#f59e0b", bg: "#fef3c7", label: "Open" },
   "In Progress": { color: "#3b82f6", bg: "#dbeafe", label: "In Progress" },
@@ -105,8 +106,23 @@ const statusConfig = {
 };
 
 const DashboardPage = () => {
+  const [ticketData, setTicketData] = useState(tickets);
+  
+  const fetchTickets = async () => {
+  try {
+    const data = await getMyTicketsApi();
+    setTicketData(data.tickets);
+  } catch (error) {
+    console.error("Error fetching tickets:", error);
+  }
+};
+
+// useEffect(()=>{
+// fetchTickets();
+// },[])
+
   return (
-    <DashboardLayout>
+    <>
       {/* Header row */}
       <Box
         sx={{
@@ -297,7 +313,7 @@ const DashboardPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {tickets.map((ticket, idx) => {
+              {ticketData && ticketData.map((ticket, idx) => {
                 const s = statusConfig[ticket.status];
                 return (
                   <TableRow
@@ -370,7 +386,7 @@ const DashboardPage = () => {
           </Table>
         </TableContainer>
       </Paper>
-    </DashboardLayout>
+    </>
   );
 };
 
