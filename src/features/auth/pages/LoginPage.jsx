@@ -9,7 +9,7 @@ import {
 
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { loginApi } from "../api/authApi";
 import useAuthStore from "../store/authStore";
@@ -94,6 +94,21 @@ const LoginPage = () => {
             <Button type="submit" variant="contained" size="large">
               Login
             </Button>
+
+            <Typography mt={3} textAlign="center" color="text.secondary">
+              Don't have an account?{" "}
+              <Typography
+                component={Link}
+                to="/register"
+                sx={{
+                  color: "primary.main",
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Register
+              </Typography>
+            </Typography>
           </Stack>
         </form>
       </Paper>
