@@ -1,8 +1,4 @@
-import {
-  Box,
-  useMediaQuery,
-  useTheme,
-} from "@mui/material";
+import { Box, useMediaQuery, useTheme } from "@mui/material";
 
 import { Outlet } from "react-router-dom";
 
@@ -17,12 +13,9 @@ const NAVBAR_HEIGHT = 72;
 const DashboardLayout = () => {
   const theme = useTheme();
 
-  const isMobile = useMediaQuery(
-    theme.breakpoints.down("md")
-  );
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  const [mobileOpen, setMobileOpen] =
-    useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen((prev) => !prev);
@@ -37,10 +30,7 @@ const DashboardLayout = () => {
     >
       {/* SIDEBAR */}
 
-      <Sidebar
-        mobileOpen={mobileOpen}
-        onClose={handleDrawerToggle}
-      />
+      <Sidebar mobileOpen={mobileOpen} onClose={handleDrawerToggle} />
 
       {/* MAIN CONTENT */}
 
@@ -59,11 +49,7 @@ const DashboardLayout = () => {
       >
         {/* NAVBAR */}
 
-        <Navbar
-          onMenuClick={
-            handleDrawerToggle
-          }
-        />
+        <Navbar onMenuClick={handleDrawerToggle} />
 
         {/* PAGE CONTENT */}
 

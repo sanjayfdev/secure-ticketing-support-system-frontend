@@ -1,9 +1,14 @@
 import {
+  alpha,
   Box,
   Button,
   Chip,
+  CircularProgress,
+  Divider,
+  Drawer,
   Grid,
   IconButton,
+  InputAdornment,
   Paper,
   Table,
   TableBody,
@@ -11,383 +16,485 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
-  alpha,
 } from "@mui/material";
 import {
   AddRounded,
+  AttachFileRounded,
+  CalendarTodayRounded,
+  CategoryRounded,
+  CheckCircleOutlineRounded,
+  CloseRounded,
+  ConfirmationNumberOutlined,
   ConfirmationNumberRounded,
   ErrorOutlineRounded,
-  CheckCircleOutlineRounded,
-  VisibilityRounded,
+  InboxRounded,
+  SearchRounded,
   TrendingUpRounded,
+  VisibilityRounded,
 } from "@mui/icons-material";
-import { Link } from "react-router-dom";
-import DashboardLayout from "../../../layouts/DashboardLayout";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getMyTicketsApi } from "../api/ticketApi";
 
-const stats = [
-  {
-    title: "Total Tickets",
-    value: 5,
-    icon: <ConfirmationNumberRounded />,
-    color: "#6C4CF1",
-    bg: "#ede9fe",
-    trend: "+2 this week",
-  },
-  {
-    title: "Open",
-    value: 2,
-    icon: <ErrorOutlineRounded />,
-    color: "#f59e0b",
-    bg: "#fef3c7",
-    trend: "Needs attention",
-  },
-  {
-    title: "In Progress",
-    value: 2,
-    icon: <TrendingUpRounded />,
-    color: "#3b82f6",
-    bg: "#dbeafe",
-    trend: "Being handled",
-  },
-  {
-    title: "Resolved",
-    value: 1,
-    icon: <CheckCircleOutlineRounded />,
-    color: "#10b981",
-    bg: "#d1fae5",
-    trend: "All clear",
-  },
-];
+/* ─── Constants ─────────────────────────────────────────────── */
 
-const tickets = [
-  {
-    id: 1,
-    subject: "Unable to access course videos",
-    category: "Technical Issue",
-    status: "Open",
-    date: "May 24, 2025",
-  },
-  {
-    id: 2,
-    subject: "Payment not reflecting in dashboard",
-    category: "Payment Issue",
-    status: "In Progress",
-    date: "May 23, 2025",
-  },
-  {
-    id: 3,
-    subject: "Certificate not generated",
-    category: "Certification",
-    status: "Resolved",
-    date: "May 22, 2025",
-  },
-  {
-    id: 4,
-    subject: "Course content mismatch",
-    category: "Content Issue",
-    status: "Open",
-    date: "May 21, 2025",
-  },
-  {
-    id: 5,
-    subject: "Need help with assignment",
-    category: "General Query",
-    status: "In Progress",
-    date: "May 20, 2025",
-  },
-];
 const statusConfig = {
-  Open: { color: "#f59e0b", bg: "#fef3c7", label: "Open" },
-  "In Progress": { color: "#3b82f6", bg: "#dbeafe", label: "In Progress" },
-  Resolved: { color: "#10b981", bg: "#d1fae5", label: "Resolved" },
+  Open: {
+    color: "#d97706",
+    bg: "#fffbeb",
+    border: "#fde68a",
+    label: "Open",
+    icon: <ErrorOutlineRounded sx={{ fontSize: 13 }} />,
+  },
+  "In Progress": {
+    color: "#2563eb",
+    bg: "#eff6ff",
+    border: "#bfdbfe",
+    label: "In Progress",
+    icon: <TrendingUpRounded sx={{ fontSize: 13 }} />,
+  },
+  Resolved: {
+    color: "#059669",
+    bg: "#f0fdf4",
+    border: "#a7f3d0",
+    label: "Resolved",
+    icon: <CheckCircleOutlineRounded sx={{ fontSize: 13 }} />,
+  },
 };
+
+const FILTER_TABS = ["All", "Open", "In Progress", "Resolved"];
+
+const formatDate = (val) => {
+  if (!val) return "—";
+  const d = new Date(val);
+  if (isNaN(d)) return val;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+/* ─── Main Component ─────────────────────────────────────────── */
 
 const DashboardPage = () => {
-  const [ticketData, setTicketData] = useState(tickets);
-  
-  const fetchTickets = async () => {
-  try {
-    const data = await getMyTicketsApi();
-    setTicketData(data.tickets);
-  } catch (error) {
-    console.error("Error fetching tickets:", error);
-  }
-};
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [selected, setSelected] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-// useEffect(()=>{
-// fetchTickets();
-// },[])
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getMyTicketsApi();
+        setTickets(data.tickets ?? data.data ?? []);
+      } catch (err) {
+        setError("Failed to load tickets.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  /* counts */
+  const counts = tickets.reduce(
+    (acc, t) => {
+      acc.total++;
+      if (t.status === "Open") acc.open++;
+      if (t.status === "In Progress") acc.inProgress++;
+      if (t.status === "Resolved") acc.resolved++;
+      return acc;
+    },
+    { total: 0, open: 0, inProgress: 0, resolved: 0 }
+  );
+
+  const statCards = [
+    { title: "Total Tickets", value: counts.total, icon: <ConfirmationNumberRounded />, color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe", filter: "All" },
+    { title: "Open", value: counts.open, icon: <ErrorOutlineRounded />, color: "#d97706", bg: "#fffbeb", border: "#fde68a", filter: "Open" },
+    { title: "In Progress", value: counts.inProgress, icon: <TrendingUpRounded />, color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe", filter: "In Progress" },
+    { title: "Resolved", value: counts.resolved, icon: <CheckCircleOutlineRounded />, color: "#059669", bg: "#f0fdf4", border: "#a7f3d0", filter: "Resolved" },
+  ];
+
+  /* filtered tickets */
+  const filtered = tickets.filter((t) => {
+    const q = search.toLowerCase();
+    const matchSearch = t.subject?.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q);
+    const matchStatus = filterStatus === "All" || t.status === filterStatus;
+    return matchSearch && matchStatus;
+  });
+
+  const openDetail = (ticket) => { setSelected(ticket); setDrawerOpen(true); };
 
   return (
-    <>
-      {/* Header row */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          mb: 3.5,
-        }}
-      >
+    <Box sx={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif" }}>
+
+      {/* ── Page header ── */}
+      <Box sx={{ display: "flex", alignItems: { xs: "flex-start", sm: "center" }, flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", gap: 2, mb: 4 }}>
         <Box>
-          <Typography
-            variant="h5"
-            sx={{
-              fontFamily: "'Syne', sans-serif",
-              fontWeight: 700,
-              color: "#111827",
-              letterSpacing: "-0.02em",
-            }}
-          >
+          <Typography variant="h5" sx={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", fontSize: "1.6rem" }}>
             Dashboard
           </Typography>
-          <Typography sx={{ fontSize: "0.85rem", color: "#9ca3af", mt: 0.3 }}>
+          <Typography sx={{ fontSize: "0.83rem", color: "#94a3b8", mt: 0.4, fontWeight: 500 }}>
             Manage and track your support tickets
           </Typography>
         </Box>
-      </Box>
-
-      {/* Stat cards */}
-      <Grid container spacing={2.5} mb={3.5}>
-        {stats.map((item) => (
-          <Grid item xs={12} sm={6} md={3} key={item.title}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.5,
-                borderRadius: "16px",
-                border: "1px solid rgba(0,0,0,0.06)",
-                bgcolor: "white",
-                transition: "all 0.25s ease",
-                "&:hover": {
-                  transform: "translateY(-3px)",
-                  boxShadow: "0 12px 32px rgba(0,0,0,0.08)",
-                  borderColor: "transparent",
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Box>
-                  <Typography
-                    sx={{
-                      fontSize: "0.78rem",
-                      fontWeight: 500,
-                      color: "#9ca3af",
-                      mb: 0.75,
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                  >
-                    {item.title}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: "2rem",
-                      fontWeight: 800,
-                      color: "#111827",
-                      fontFamily: "'Syne', sans-serif",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {item.value}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: "0.7rem",
-                      color: item.color,
-                      mt: 0.75,
-                      fontWeight: 500,
-                    }}
-                  >
-                    {item.trend}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: "12px",
-                    bgcolor: item.bg,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: item.color,
-                    flexShrink: 0,
-                    "& svg": { fontSize: 22 },
-                  }}
-                >
-                  {item.icon}
-                </Box>
-              </Box>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Tickets table */}
-      <Paper
-        elevation={0}
-        sx={{
-          borderRadius: "18px",
-          border: "1px solid rgba(0,0,0,0.06)",
-          bgcolor: "white",
-          overflow: "hidden",
-        }}
-      >
-        {/* Table header row */}
-        <Box
+        <Button
+          component={Link}
+          to="/create-ticket"
+          variant="contained"
+          startIcon={<AddRounded />}
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            px: 3,
-            py: 2.5,
-            borderBottom: "1px solid rgba(0,0,0,0.05)",
+            borderRadius: "12px",
+            textTransform: "none",
+            fontWeight: 700,
+            fontSize: "0.82rem",
+            fontFamily: "inherit",
+            background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+            boxShadow: "0 4px 14px rgba(124,58,237,0.38)",
+            px: 2.5,
+            py: 1.1,
+            "&:hover": {
+              background: "linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)",
+              boxShadow: "0 6px 20px rgba(124,58,237,0.45)",
+              transform: "translateY(-1px)",
+            },
+            transition: "all 0.2s ease",
           }}
         >
-          <Typography
-            sx={{
-              fontFamily: "'Syne', sans-serif",
-              fontWeight: 700,
-              fontSize: "1rem",
-              color: "#111827",
-            }}
-          >
+          Create Ticket
+        </Button>
+      </Box>
+
+      {/* ── Stat cards ── */}
+      <Grid container spacing={2.5} mb={4}>
+        {statCards.map((item) => {
+          const isActive = filterStatus === item.filter || (item.filter === "All" && filterStatus === "All");
+          return (
+            <Grid item xs={6} sm={6} md={3} key={item.title}>
+              <Paper
+                elevation={0}
+                onClick={() => setFilterStatus(item.filter)}
+                sx={{
+                  p: 2.5,
+                  borderRadius: "16px",
+                  border: `1.5px solid ${isActive ? alpha(item.color, 0.45) : "rgba(0,0,0,0.06)"}`,
+                  bgcolor: isActive ? item.bg : "white",
+                  cursor: "pointer",
+                  transition: "all 0.22s ease",
+                  boxShadow: isActive ? `0 6px 24px ${alpha(item.color, 0.15)}` : "none",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                    boxShadow: `0 8px 28px ${alpha(item.color, 0.14)}`,
+                    borderColor: alpha(item.color, 0.35),
+                  },
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <Box>
+                    <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", mb: 0.8, letterSpacing: "0.05em", textTransform: "uppercase", fontFamily: "inherit" }}>
+                      {item.title}
+                    </Typography>
+                    <Typography sx={{ fontSize: "2.2rem", fontWeight: 800, color: isActive ? item.color : "#0f172a", fontFamily: "inherit", lineHeight: 1 }}>
+                      {loading ? "—" : item.value}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ width: 42, height: 42, borderRadius: "12px", bgcolor: isActive ? alpha(item.color, 0.15) : "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", color: item.color, flexShrink: 0, "& svg": { fontSize: 21 }, transition: "all 0.2s" }}>
+                    {item.icon}
+                  </Box>
+                </Box>
+              </Paper>
+            </Grid>
+          );
+        })}
+      </Grid>
+
+      {/* ── Tickets table card ── */}
+      <Paper elevation={0} sx={{ borderRadius: "18px", border: "1.5px solid rgba(0,0,0,0.06)", bgcolor: "white", overflow: "hidden" }}>
+
+        {/* Toolbar */}
+        <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+          <Typography sx={{ fontFamily: "inherit", fontWeight: 800, fontSize: "1rem", color: "#0f172a", mr: "auto" }}>
             My Tickets
           </Typography>
-          <Button
-            component={Link}
-            to="/create-ticket"
-            variant="contained"
-            startIcon={<AddRounded />}
+
+          {/* Search */}
+          <TextField
             size="small"
-            sx={{
-              borderRadius: "10px",
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: "0.8rem",
-              background: "linear-gradient(135deg, #6C4CF1, #8b5cf6)",
-              boxShadow: "0 4px 12px rgba(108,76,241,0.35)",
-              px: 2,
-              py: 0.9,
-              "&:hover": {
-                background: "linear-gradient(135deg, #5b3de0, #7c3aed)",
-                boxShadow: "0 4px 18px rgba(108,76,241,0.45)",
+            placeholder="Search tickets…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRounded sx={{ fontSize: 17, color: "#94a3b8" }} />
+                </InputAdornment>
+              ),
+              sx: {
+                borderRadius: "10px",
+                fontSize: "0.82rem",
+                fontFamily: "inherit",
+                bgcolor: "#f8fafc",
+                "& fieldset": { borderColor: "rgba(0,0,0,0.08)" },
+                "&:hover fieldset": { borderColor: "rgba(0,0,0,0.18)" },
               },
             }}
-          >
-            Create Ticket
-          </Button>
+            sx={{ width: { xs: "100%", sm: 220 } }}
+          />
+
+          {/* Filter chips */}
+          <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+            {FILTER_TABS.map((tab) => {
+              const active = filterStatus === tab;
+              return (
+                <Box
+                  key={tab}
+                  onClick={() => setFilterStatus(tab)}
+                  sx={{
+                    px: 1.5, py: 0.55, borderRadius: "8px", fontSize: "0.75rem", fontWeight: 700,
+                    cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
+                    bgcolor: active ? "#7c3aed" : "#f1f5f9",
+                    color: active ? "white" : "#64748b",
+                    "&:hover": { bgcolor: active ? "#6d28d9" : "#e2e8f0" },
+                  }}
+                >
+                  {tab}
+                </Box>
+              );
+            })}
+          </Box>
         </Box>
 
+        {/* Table */}
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow sx={{ bgcolor: "#f9fafb" }}>
-                {["#", "Subject", "Category", "Status", "Created At", "Actions"].map(
-                  (h) => (
-                    <TableCell
-                      key={h}
-                      sx={{
-                        fontSize: "0.72rem",
-                        fontWeight: 700,
-                        color: "#6b7280",
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        py: 1.5,
-                        borderBottom: "1px solid rgba(0,0,0,0.06)",
-                      }}
-                    >
-                      {h}
-                    </TableCell>
-                  )
-                )}
+              <TableRow sx={{ bgcolor: "#fafafa" }}>
+                {["#", "Subject", "Category", "Status", "Created At", "Actions"].map((h) => (
+                  <TableCell
+                    key={h}
+                    sx={{ fontSize: "0.68rem", fontWeight: 800, color: "#94a3b8", letterSpacing: "0.07em", textTransform: "uppercase", py: 1.5, borderBottom: "1px solid #f1f5f9", fontFamily: "inherit" }}
+                  >
+                    {h}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody>
-              {ticketData && ticketData.map((ticket, idx) => {
-                const s = statusConfig[ticket.status];
-                return (
-                  <TableRow
-                    key={ticket.id}
-                    sx={{
-                      "&:hover": { bgcolor: "#f9fafb" },
-                      "&:last-child td": { border: 0 },
-                      transition: "background 0.15s",
-                    }}
-                  >
-                    <TableCell
-                      sx={{ color: "#9ca3af", fontSize: "0.82rem", py: 2 }}
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} sx={{ textAlign: "center", py: 7, border: 0 }}>
+                    <CircularProgress size={28} sx={{ color: "#7c3aed" }} />
+                  </TableCell>
+                </TableRow>
+              ) : error ? (
+                <TableRow>
+                  <TableCell colSpan={6} sx={{ textAlign: "center", py: 6, color: "#ef4444", fontSize: "0.85rem", border: 0 }}>
+                    {error}
+                  </TableCell>
+                </TableRow>
+              ) : filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} sx={{ border: 0 }}>
+                    <EmptyState hasTickets={tickets.length > 0} />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((ticket, idx) => {
+                  const s = statusConfig[ticket.status] ?? statusConfig["Open"];
+                  return (
+                    <TableRow
+                      key={ticket._id ?? ticket.id ?? idx}
+                      onClick={() => openDetail(ticket)}
+                      sx={{ "&:hover": { bgcolor: "#fafafa" }, "&:last-child td": { border: 0 }, transition: "background 0.12s", cursor: "pointer" }}
                     >
-                      {idx + 1}
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontWeight: 500,
-                        fontSize: "0.85rem",
-                        color: "#111827",
-                        maxWidth: 200,
-                      }}
-                    >
-                      {ticket.subject}
-                    </TableCell>
-                    <TableCell
-                      sx={{ fontSize: "0.82rem", color: "#6b7280" }}
-                    >
-                      {ticket.category}
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={s.label}
-                        size="small"
-                        sx={{
-                          bgcolor: s.bg,
-                          color: s.color,
-                          fontWeight: 600,
-                          fontSize: "0.72rem",
-                          height: 24,
-                          border: `1px solid ${alpha(s.color, 0.2)}`,
-                          "& .MuiChip-label": { px: 1.2 },
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell
-                      sx={{ fontSize: "0.82rem", color: "#9ca3af" }}
-                    >
-                      {ticket.date}
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        sx={{
-                          color: "#9ca3af",
-                          borderRadius: "8px",
-                          "&:hover": {
-                            bgcolor: "#ede9fe",
-                            color: "#6C4CF1",
-                          },
-                        }}
-                      >
-                        <VisibilityRounded sx={{ fontSize: 18 }} />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                      <TableCell sx={{ color: "#cbd5e1", fontSize: "0.8rem", py: 2, fontFamily: "inherit", fontWeight: 600 }}>
+                        {idx + 1}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: "0.855rem", color: "#0f172a", maxWidth: 240, fontFamily: "inherit" }}>
+                        {ticket.subject}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: "inline-flex", alignItems: "center", px: 1.2, py: 0.4, borderRadius: "6px", bgcolor: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                          <Typography sx={{ fontSize: "0.775rem", color: "#475569", fontWeight: 600, fontFamily: "inherit" }}>
+                            {ticket.category}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, px: 1.2, py: 0.4, borderRadius: "7px", bgcolor: s.bg, border: `1px solid ${s.border}` }}>
+                          <Box sx={{ color: s.color, display: "flex", alignItems: "center" }}>{s.icon}</Box>
+                          <Typography sx={{ fontSize: "0.75rem", color: s.color, fontWeight: 700, fontFamily: "inherit" }}>{s.label}</Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ fontSize: "0.8rem", color: "#94a3b8", fontFamily: "inherit", fontWeight: 500 }}>
+                        {formatDate(ticket.createdAt)}
+                      </TableCell>
+                      <TableCell onClick={(e) => { e.stopPropagation(); openDetail(ticket); }}>
+                        <IconButton size="small" sx={{ color: "#cbd5e1", borderRadius: "8px", "&:hover": { bgcolor: "#f5f3ff", color: "#7c3aed" }, transition: "all 0.15s" }}>
+                          <VisibilityRounded sx={{ fontSize: 17 }} />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
         </TableContainer>
       </Paper>
-    </>
+
+      {/* ── Detail Drawer ── */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        PaperProps={{ sx: { width: { xs: "100vw", sm: 430 }, bgcolor: "#f8fafc", boxShadow: "-8px 0 48px rgba(0,0,0,0.1)" } }}
+      >
+        {selected && <TicketDetail ticket={selected} onClose={() => setDrawerOpen(false)} />}
+      </Drawer>
+    </Box>
   );
 };
+
+/* ─── Ticket Detail Drawer ───────────────────────────────────── */
+
+const TicketDetail = ({ ticket, onClose }) => {
+  const s = statusConfig[ticket.status] ?? statusConfig["Open"];
+
+  return (
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif" }}>
+      {/* Header */}
+      <Box sx={{ px: 3, py: 2.5, bgcolor: "white", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ width: 38, height: 38, borderRadius: "11px", bgcolor: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <ConfirmationNumberOutlined sx={{ fontSize: 20, color: "#7c3aed" }} />
+          </Box>
+          <Box>
+            <Typography sx={{ fontFamily: "inherit", fontWeight: 800, fontSize: "0.95rem", color: "#0f172a" }}>Ticket Details</Typography>
+            <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 600 }}>
+              #{(ticket._id ?? ticket.id ?? "").toString().slice(-6).toUpperCase()}
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton size="small" onClick={onClose} sx={{ color: "#94a3b8", bgcolor: "#f1f5f9", borderRadius: "9px", "&:hover": { bgcolor: "#e2e8f0", color: "#475569" } }}>
+          <CloseRounded fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* Body */}
+      <Box sx={{ flex: 1, overflow: "auto", p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+
+        {/* Status badge */}
+        <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.6, px: 1.4, py: 0.55, borderRadius: "8px", bgcolor: s.bg, border: `1.5px solid ${s.border}`, width: "fit-content" }}>
+          <Box sx={{ color: s.color, display: "flex" }}>{s.icon}</Box>
+          <Typography sx={{ fontSize: "0.78rem", color: s.color, fontWeight: 800, fontFamily: "inherit" }}>{ticket.status}</Typography>
+        </Box>
+
+        {/* Subject */}
+        <Paper elevation={0} sx={{ p: 2.5, borderRadius: "14px", border: "1.5px solid #f1f5f9", bgcolor: "white" }}>
+          <Typography sx={{ fontSize: "0.68rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.07em", mb: 0.8, fontFamily: "inherit" }}>
+            Subject
+          </Typography>
+          <Typography sx={{ fontFamily: "inherit", fontWeight: 800, fontSize: "1rem", color: "#0f172a", lineHeight: 1.45 }}>
+            {ticket.subject}
+          </Typography>
+        </Paper>
+
+        {/* Meta */}
+        <Box sx={{ display: "flex", gap: 1.5 }}>
+          <DetailMeta icon={<CategoryRounded sx={{ fontSize: 14 }} />} label="Category" value={ticket.category} />
+          <DetailMeta icon={<CalendarTodayRounded sx={{ fontSize: 14 }} />} label="Created" value={formatDate(ticket.createdAt ?? ticket.date)} />
+        </Box>
+
+        {/* Description */}
+        <Paper elevation={0} sx={{ p: 2.5, borderRadius: "14px", border: "1.5px solid #f1f5f9", bgcolor: "white" }}>
+          <Typography sx={{ fontSize: "0.68rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.07em", mb: 1, fontFamily: "inherit" }}>
+            Description
+          </Typography>
+          <Typography sx={{ fontSize: "0.875rem", color: "#334155", lineHeight: 1.75, whiteSpace: "pre-wrap", fontFamily: "inherit", fontWeight: 500 }}>
+            {ticket.description || "No description provided."}
+          </Typography>
+        </Paper>
+
+        {/* Attachment */}
+        {ticket.attachment && (
+          <Paper elevation={0} sx={{ p: 2, borderRadius: "14px", border: "1.5px solid #f1f5f9", bgcolor: "white", display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ width: 36, height: 36, borderRadius: "9px", bgcolor: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <AttachFileRounded sx={{ fontSize: 18, color: "#7c3aed" }} />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: "inherit" }}>
+                {ticket.attachment}
+              </Typography>
+              <Typography sx={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 500 }}>Attachment</Typography>
+            </Box>
+          </Paper>
+        )}
+
+        {/* Admin note */}
+        {ticket.adminNote && (
+          <>
+            <Divider sx={{ borderColor: "#f1f5f9" }} />
+            <Paper elevation={0} sx={{ p: 2.5, borderRadius: "14px", bgcolor: "#f0fdf4", border: "1.5px solid #bbf7d0" }}>
+              <Typography sx={{ fontSize: "0.68rem", fontWeight: 800, color: "#059669", textTransform: "uppercase", letterSpacing: "0.07em", mb: 0.8, fontFamily: "inherit" }}>
+                Admin Response
+              </Typography>
+              <Typography sx={{ fontSize: "0.875rem", color: "#065f46", lineHeight: 1.7, fontFamily: "inherit", fontWeight: 500 }}>
+                {ticket.adminNote}
+              </Typography>
+            </Paper>
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+/* ─── Sub-components ─────────────────────────────────────────── */
+
+const DetailMeta = ({ icon, label, value }) => (
+  <Paper elevation={0} sx={{ flex: 1, p: 1.75, borderRadius: "12px", border: "1.5px solid #f1f5f9", bgcolor: "white", fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif" }}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mb: 0.6, color: "#94a3b8" }}>
+      {icon}
+      <Typography sx={{ fontSize: "0.65rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "inherit" }}>
+        {label}
+      </Typography>
+    </Box>
+    <Typography sx={{ fontSize: "0.82rem", fontWeight: 700, color: "#334155", fontFamily: "inherit" }}>{value}</Typography>
+  </Paper>
+);
+
+const EmptyState = ({ hasTickets }) => (
+  <Box sx={{ textAlign: "center", py: 9, px: 3, fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif" }}>
+    <Box sx={{ width: 56, height: 56, borderRadius: "16px", bgcolor: "#f8fafc", border: "1.5px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", mx: "auto", mb: 2 }}>
+      <InboxRounded sx={{ fontSize: 26, color: "#cbd5e1" }} />
+    </Box>
+    <Typography sx={{ fontFamily: "inherit", fontWeight: 800, fontSize: "0.95rem", color: "#334155", mb: 0.5 }}>
+      {hasTickets ? "No matching tickets" : "No tickets yet"}
+    </Typography>
+    <Typography sx={{ fontSize: "0.8rem", color: "#94a3b8", mb: 2.5, fontWeight: 500 }}>
+      {hasTickets ? "Try adjusting your search or filters" : "Submit your first support request to get started"}
+    </Typography>
+    {!hasTickets && (
+      <Button
+        component={Link}
+        to="/create-ticket"
+        variant="contained"
+        startIcon={<AddRounded />}
+        sx={{
+          borderRadius: "10px", textTransform: "none", fontWeight: 700, fontSize: "0.8rem", fontFamily: "inherit",
+          background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+          boxShadow: "0 4px 12px rgba(124,58,237,0.3)",
+          "&:hover": { background: "linear-gradient(135deg, #6d28d9, #5b21b6)" },
+        }}
+      >
+        Create Ticket
+      </Button>
+    )}
+  </Box>
+);
 
 export default DashboardPage;

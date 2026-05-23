@@ -11,10 +11,11 @@ import {
 import {
   NotificationsRounded,
   KeyboardArrowDownRounded,
+  MenuRounded,
 } from "@mui/icons-material";
 import useAuthStore from "../features/auth/store/authStore";
 
-const Navbar = () => {
+const Navbar = ({onMenuClick}) => {
   const { user } = useAuthStore((state) => state);
 
   return (
@@ -40,28 +41,55 @@ const Navbar = () => {
         }}
       >
         {/* Left: greeting */}
-        <Box>
-          <Typography
-            sx={{
-              fontFamily: "'Syne', sans-serif",
-              fontWeight: 700,
-              fontSize: "1rem",
-              color: "#111827",
-              lineHeight: 1.2,
-            }}
-          >
-            Welcome back, {user?.name?.split(" ")[0] || "User"}! 👋
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: "0.72rem",
-              color: "#9ca3af",
-              mt: 0.2,
-            }}
-          >
-            Here's what's happening with your support tickets.
-          </Typography>
-        </Box>
+       <Box
+  sx={{
+    display: "flex",
+    alignItems: "center",
+    gap: 1.5,
+  }}
+>
+  <IconButton
+    onClick={onMenuClick}
+    sx={{
+      display: { md: "none" },
+      bgcolor: "#f3f4f6",
+      width: 40,
+      height: 40,
+    }}
+  >
+    <MenuRounded />
+  </IconButton>
+
+  <Box>
+    <Typography
+      sx={{
+        fontFamily: "'Syne', sans-serif",
+        fontWeight: 700,
+        fontSize: {
+          xs: "0.9rem",
+          sm: "1rem",
+        },
+      }}
+    >
+      Welcome back,{" "}
+      {user?.name?.split(" ")[0] || "User"}
+    </Typography>
+
+    <Typography
+      sx={{
+        fontSize: "0.72rem",
+        color: "#9ca3af",
+        mt: 0.2,
+        display: {
+          xs: "none",
+          sm: "block",
+        },
+      }}
+    >
+      Here's what's happening with your support tickets.
+    </Typography>
+  </Box>
+</Box>
 
         {/* Right: actions */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>

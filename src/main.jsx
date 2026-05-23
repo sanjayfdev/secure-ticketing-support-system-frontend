@@ -10,7 +10,7 @@ import router from './app/router.jsx'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
-      <Toaster position='top-right'/>
+      <Toaster position='bottom-center'/>
       <RouterProvider router={router} />
     </ThemeProvider>
   </StrictMode>,

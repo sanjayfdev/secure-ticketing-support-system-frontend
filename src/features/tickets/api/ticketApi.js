@@ -11,9 +11,3 @@ export const getMyTicketsApi = async () => {
 
   return response.data;
 };
-
-export const getAllTicketsApi = async () => {
-  const response = await API.get("/tickets/all");
-
-  return response.data;
-};
