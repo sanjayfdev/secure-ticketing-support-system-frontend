@@ -5,6 +5,7 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from "@mui/material";
 
 import { useForm } from "react-hook-form";
@@ -16,7 +17,7 @@ import useAuthStore from "../store/authStore";
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-
+  const theme = useTheme();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const {
@@ -28,12 +29,12 @@ const RegisterPage = () => {
   const onSubmit = async (data) => {
     try {
       const response = await registerApi(data);
-
+      
       setAuth({
         user: response.user,
         token: response.token,
       });
-
+      
       toast.success("Registration Successful");
 
       navigate("/");
@@ -73,8 +74,8 @@ const RegisterPage = () => {
         </Typography>
 
         <Typography
-          color="text.secondary"
-          mb={4}
+          sx={{color:theme.palette.secondary}}
+          gutterBottom
         >
           Register to continue
         </Typography>
