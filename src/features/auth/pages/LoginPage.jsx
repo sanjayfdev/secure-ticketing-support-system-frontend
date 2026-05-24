@@ -5,18 +5,19 @@ import {
   Stack,
   TextField,
   Typography,
+  useTheme,
 } from "@mui/material";
 
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { loginApi } from "../api/authApi";
 import useAuthStore from "../store/authStore";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-
+  const theme = useTheme();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const {
@@ -28,10 +29,11 @@ const LoginPage = () => {
   const onSubmit = async (data) => {
     try {
       const response = await loginApi(data);
-
+      const {user, token} = response.data;
+      debugger
       setAuth({
-        user: response.user,
-        token: response.token,
+        user: user,
+        token: token,
       });
 
       toast.success("Login Successful");
@@ -64,7 +66,7 @@ const LoginPage = () => {
           Welcome Back
         </Typography>
 
-        <Typography color="text.secondary" mb={4}>
+        <Typography sx={{color:theme.palette.secondary}} gutterBottom>
           Login to continue
         </Typography>
 
@@ -94,6 +96,21 @@ const LoginPage = () => {
             <Button type="submit" variant="contained" size="large">
               Login
             </Button>
+
+            <Typography mt={3} textAlign="center" color={theme.palette.secondary}>
+              Don't have an account?{" "}
+              <Typography
+                component={Link}
+                to="/register"
+                sx={{
+                  color: theme.palette.primary,
+                  textDecoration: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Register
+              </Typography>
+            </Typography>
           </Stack>
         </form>
       </Paper>
